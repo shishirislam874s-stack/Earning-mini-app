@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans p-6">
+    <div class="max-w-2xl mx-auto space-y-6">
+        <h1 class="text-2xl font-bold text-center text-blue-400">অ্যাডমিন কন্ট্রোল প্যানেল</h1>
+
+        <!-- Gmail Upload -->
+        <div class="bg-slate-800 p-4 rounded-xl shadow space-y-3">
+            <h2 class="font-bold">বাল্ক জিমেইল আপলোড (প্রতি লাইনে একটি)</h2>
+            <textarea id="gmail-list" rows="5" class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg" placeholder="email1@gmail.com&#10;email2@gmail.com"></textarea>
+            <button onclick="uploadGmails()" class="bg-blue-600 hover:bg-blue-700 font-bold px-4 py-2 rounded-lg w-full">জিমেইল আপলোড করুন</button>
+        </div>
+
+        <!-- Withdraw Requests -->
+        <div class="bg-slate-800 p-4 rounded-xl shadow space-y-3">
+            <h2 class="font-bold">উইথড্র রিকোয়েস্ট লিস্ট</h2>
+            <div id="withdraw-list" class="space-y-2">
+                <!-- Loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function uploadGmails() {
+            const emails = document.getElementById('gmail-list').value;
+            const res = await fetch('/api/admin/upload-gmails', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ emails })
+            });
+            const data = await res.json();
+            alert(data.message);
+            document.getElementById('gmail-list').value = "";
+        }
+
+        async function loadWithdraws() {
+            const res = await fetch('/api/admin/withdraws');
+            const data = await res.json();
+            const container = document.getElementById('withdraw-list');
+            container.innerHTML = "";
+
+            data.list.forEach(item => {
+                container.innerHTML += `
+                    <div class="bg-slate-900 p-3 rounded-lg flex justify-between items-center text-sm">
+                        <div>
+                            <p><b>মেথড:</b> ${item.method} | <b>নম্বর:</b> ${item.accountNo}</p>
+                            <p class="text-green-400">টাকা: ${item.amount} BDT</p>
+                        </div>
+                        <span class="px-2 py-1 bg-yellow-600 text-xs rounded">${item.status}</span>
+                    </div>
+                `;
+            });
+        }
+
+        loadWithdraws();
+    </script>
+</body>
+</html>
