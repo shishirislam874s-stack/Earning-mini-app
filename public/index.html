@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans p-4">
+    <div class="max-w-md mx-auto space-y-4">
+        <!-- Header -->
+        <div class="bg-slate-800 p-4 rounded-xl shadow flex justify-between items-center">
+            <div>
+                <h1 id="username" class="font-bold text-lg">ইউজার</h1>
+                <p class="text-xs text-slate-400">স্ট্যাটাস: <span id="status-badge" class="text-yellow-400">আনঅ্যাক্টিভ</span></p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-slate-400">ব্যালেন্স</p>
+                <p class="text-xl font-bold text-green-400"><span id="balance">0</span> BDT</p>
+            </div>
+        </div>
+
+        <!-- Activation Box -->
+        <div id="activation-box" class="bg-amber-900/40 border border-amber-600 p-4 rounded-xl text-center hidden">
+            <h2 class="font-bold text-amber-300">আইডি আনঅ্যাক্টিভ!</h2>
+            <p class="text-xs text-slate-300 mt-1">কাজ শুরু করতে ১০০ টাকা দিয়ে আইডি অ্যাক্টিভ করুন।</p>
+            <button onclick="activateAccount()" class="mt-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg w-full">আইডি অ্যাক্টিভ করুন (১০০ টাকা)</button>
+        </div>
+
+        <!-- Task Section -->
+        <div class="bg-slate-800 p-4 rounded-xl shadow space-y-3">
+            <h2 class="font-bold border-b border-slate-700 pb-2">জিমেইল টাস্ক</h2>
+            <div id="task-area" class="text-center py-4">
+                <button onclick="getTask()" class="bg-blue-600 hover:bg-blue-700 font-bold px-4 py-2 rounded-lg w-full">নতুন টাস্ক নিন</button>
+            </div>
+            <div id="task-details" class="hidden space-y-2 bg-slate-900 p-3 rounded-lg text-sm">
+                <p><b>ইমেইল:</b> <span id="assigned-email" class="text-blue-400 select-all"></span></p>
+                <p><b>পাসওয়ার্ড:</b> <span class="text-green-400 select-all">5362412.</span></p>
+                <button onclick="submitTask()" class="bg-green-600 hover:bg-green-700 font-bold px-4 py-2 rounded-lg w-full mt-2">কাজ সম্পন্ন হয়েছে (সাবমিট)</button>
+            </div>
+        </div>
+
+        <!-- Withdraw Section -->
+        <div class="bg-slate-800 p-4 rounded-xl shadow space-y-3">
+            <h2 class="font-bold border-b border-slate-700 pb-2">টাকা উইথড্র</h2>
+            <select id="w-method" class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg">
+                <option value="Bkash">বিকাশ (Bkash)</option>
+                <option value="Nagad">নগদ (Nagad)</option>
+                <option value="Rocket">রকেট (Rocket)</option>
+            </select>
+            <input type="text" id="w-account" placeholder="একাউন্ট নম্বর" class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg">
+            <input type="number" id="w-amount" placeholder="পরিমাণ (মিনিমাম ১০০)" class="w-full bg-slate-900 border border-slate-700 p-2 rounded-lg">
+            <button onclick="requestWithdraw()" class="bg-purple-600 hover:bg-purple-700 font-bold px-4 py-2 rounded-lg w-full">উইথড্র রিকোয়েস্ট পাঠান</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const user = tg.initDataUnsafe?.user || { id: "12345678", first_name: "TestUser" };
+        const telegramId = user.id.toString();
+        const name = user.first_name;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const referrerId = urlParams.get('start');
+
+        let currentEmail = "";
+
+        async function init() {
+            document.getElementById('username').innerText = name;
+            const res = await fetch('/api/user/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telegramId, name, referrerId })
+            });
+            const data = await res.json();
+            updateUI(data.user);
+        }
+
+        function updateUI(u) {
+            document.getElementById('balance').innerText = u.balance;
+            if (u.isActivated) {
+                document.getElementById('status-badge').innerText = "অ্যাক্টিভ ✅";
+                document.getElementById('status-badge').className = "text-green-400";
+                document.getElementById('activation-box').classList.add('hidden');
+            } else {
+                document.getElementById('status-badge').innerText = "আনঅ্যাক্টিভ ❌";
+                document.getElementById('status-badge').className = "text-red-400";
+                document.getElementById('activation-box').classList.remove('hidden');
+            }
+        }
+
+        async function activateAccount() {
+            const res = await fetch('/api/user/activate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telegramId })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) updateUI(data.user);
+        }
+
+        async function getTask() {
+            const res = await fetch('/api/task/get', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telegramId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                currentEmail = data.gmail.email;
+                document.getElementById('assigned-email').innerText = currentEmail;
+                document.getElementById('task-area').classList.add('hidden');
+                document.getElementById('task-details').classList.remove('hidden');
+            } else {
+                alert(data.message);
+            }
+        }
+
+        async function submitTask() {
+            const res = await fetch('/api/task/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telegramId, email: currentEmail })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) {
+                updateUI(data.user);
+                document.getElementById('task-details').classList.add('hidden');
+                document.getElementById('task-area').classList.remove('hidden');
+            }
+        }
+
+        async function requestWithdraw() {
+            const method = document.getElementById('w-method').value;
+            const accountNo = document.getElementById('w-account').value;
+            const amount = document.getElementById('w-amount').value;
+
+            const res = await fetch('/api/withdraw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telegramId, amount: Number(amount), method, accountNo })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if(data.success) init();
+        }
+
+        init();
+    </script>
+</body>
+</html>
